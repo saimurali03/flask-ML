@@ -1,4 +1,4 @@
-# Jenkinsfile placeholder - full pipeline added here
+//Jenkinsfile placeholder - full pipeline added here
 pipeline {
   agent any
 
