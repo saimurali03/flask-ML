@@ -5,7 +5,7 @@ pipeline {
   environment {
     AWS_REGION     = 'ap-south-1'
     ECR_REPO       = 'flask-ml-api'
-    AWS_ACCOUNT_ID = credentials('AWS_ACCOUNT_ID')  // Jenkins credential (string)
+    AWS_ACCOUNT_ID = credentials('aws-creds')  // Jenkins credential (string)
     IMAGE_TAG      = "${env.BUILD_NUMBER}"
     ECR_URI        = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}"
   }
