@@ -1,0 +1,92 @@
+# ==============================
+# Python / Flask
+# ==============================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.sqlite3
+.env
+venv/
+.envrc
+instance/
+.DS_Store
+
+# ==============================
+# Machine Learning models
+# ==============================
+*.pkl
+*.joblib
+*.h5
+*.model
+
+# ==============================
+# Docker / Compose
+# ==============================
+*.pid
+*.tar
+*.bak
+*.swp
+.docker/
+docker-compose.override.yml
+*.local.yml
+
+# ==============================
+# Jenkins
+# ==============================
+jenkins_home/
+workspace/
+*.jenkinsfile.bak
+*.jenkins_backup/
+*.jenkins_logs/
+*.groovy.bak
+
+# ==============================
+# Terraform
+# ==============================
+.terraform/
+terraform.tfstate
+terraform.tfstate.backup
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.lock.hcl
+*.tfvars
+*.tfvars.json
+
+# ==============================
+# AWS / Secrets
+# ==============================
+.aws/
+*.pem
+*.key
+*.crt
+*.csr
+*.pub
+*.zip
+secrets.yaml
+*.env
+.env.*
+
+# ==============================
+# Editor / System
+# ==============================
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+Thumbs.db
+desktop.ini
+
+# ==============================
+# Logs / Temporary files
+# ==============================
+*.log
+*.tmp
+*.bak
+*.old
+logs/
+tmp/
