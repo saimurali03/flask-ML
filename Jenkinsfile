@@ -3,15 +3,12 @@ pipeline {
   agent any
 
   environment {
-    AWS_REGION     = 'ap-south-1'
-    ECR_REPO       = 'flask-ml-api'
-    AWS_ACCOUNT_ID = credentials('aws-creds')  // Jenkins credential (string)
-    IMAGE_TAG      = "${env.BUILD_NUMBER}"
-    ECR_URI        = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}"
+    AWS_REGION  = 'ap-south-1'
+    ECR_REPO    = 'flask-ml-api'
+    IMAGE_TAG   = "${env.BUILD_NUMBER}"
   }
 
   stages {
-
     stage('Checkout') {
       steps {
         checkout scm
@@ -29,18 +26,27 @@ pipeline {
 
     stage('Login to ECR') {
       steps {
-        sh '''
-          echo "Logging in to AWS ECR..."
-          aws ecr get-login-password --region ${AWS_REGION} \
-          | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-        '''
+        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
+          sh '''
+            echo "Logging in to AWS ECR..."
+            ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
+            ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}"
+            echo "ECR URI: ${ECR_URI}"
+
+            aws ecr get-login-password --region ${AWS_REGION} | \
+            docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+
+            echo ${ECR_URI} > ecr_uri.txt
+          '''
+        }
       }
     }
 
     stage('Push to ECR') {
       steps {
         sh '''
-          echo "Pushing image to ECR..."
+          ECR_URI=$(cat ecr_uri.txt)
+          echo "Tagging and pushing image to ${ECR_URI}:${IMAGE_TAG}..."
           docker tag ${ECR_REPO}:${IMAGE_TAG} ${ECR_URI}:${IMAGE_TAG}
           docker push ${ECR_URI}:${IMAGE_TAG}
         '''
@@ -51,6 +57,7 @@ pipeline {
       steps {
         dir('terraform') {
           sh '''
+            ECR_URI=$(cat ../ecr_uri.txt)
             echo "Initializing Terraform..."
             terraform init -reconfigure
             echo "Applying Terraform changes..."
