@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  # Jenkins container (CI/CD server)
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: jenkins
+    user: root
+    ports:
+      - "8090:8080"   # Jenkins UI
+      - "50000:50000" # Jenkins agent port
+    volumes:
+      - ./jenkins_home:/var/jenkins_home          # Jenkins data (persistent)
+      - /var/run/docker.sock:/var/run/docker.sock # Access Docker daemon
+      - .:/workspace                              # Mount project files
+    environment:
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+      - AWS_REGION=ap-south-1
+    restart: always
+
+  # Flask ML API (for local testing)
+  flask-ml:
+    build: ./app
+    container_name: flask-ml
+    ports:
+      - "5000:5000"
+    depends_on:
+      - training-service
+    volumes:
+      - ./app:/app
+    environment:
+      - MODEL_PATH=/app/model.pkl
+
+  # Training microservice (creates model.pkl)
+  training-service:
+    build: ./training-service
+    container_name: training-service
+    working_dir: /training-service
+    volumes:
+      - ./training-service:/training-service
+      - ./app:/data
+    environment:
+      - OUT_DIR=/data
+    command: ["python", "train.py"]
