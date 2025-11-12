@@ -67,20 +67,27 @@ pipeline {
     }
 
     stage('Terraform Deploy') {
-      steps {
-        dir('terraform') {
-          sh '''
-            ECR_URI=$(cat ../ecr_uri.txt)
-            echo "Initializing Terraform..."
-            terraform init -reconfigure
-            echo "Applying Terraform changes..."
-            terraform apply -auto-approve \
-              -var "ecr_repo_url=${ECR_URI}" \
-              -var "image_tag=${IMAGE_TAG}"
-          '''
+        steps {
+            withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
+            dir('terraform') {
+                sh '''
+                echo "Initializing Terraform..."
+                terraform init -reconfigure
+
+                echo "Applying Terraform changes..."
+                export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+                export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+                export AWS_DEFAULT_REGION=${AWS_REGION}
+
+                terraform apply -auto-approve \
+                    -var "ecr_repo_url=${ECR_URI}" \
+                    -var "image_tag=${IMAGE_TAG}"
+                '''
+            }
+            }
         }
-      }
     }
+
   }
 
   post {
