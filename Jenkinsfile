@@ -41,6 +41,19 @@ pipeline {
         }
       }
     }
+    stage('Ensure ECR Repository') {
+        steps {
+            withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
+            sh '''
+                echo "Checking if ECR repo ${ECR_REPO} exists..."
+                ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
+                aws ecr describe-repositories --repository-names ${ECR_REPO} --region ${AWS_REGION} || \
+                aws ecr create-repository --repository-name ${ECR_REPO} --region ${AWS_REGION}
+            '''
+            }
+        }
+    }
+
 
     stage('Push to ECR') {
       steps {
