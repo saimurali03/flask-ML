@@ -81,31 +81,12 @@ pipeline {
                 export AWS_DEFAULT_REGION=${AWS_REGION}
 
                 echo "📦 Importing existing AWS resources..."
+                terraform import -var="ecr_repo_url=${ECR_URI}" -var="image_tag=${IMAGE_TAG}" aws_ecr_repository.this ${ECR_REPO} || true
+                terraform import -var="ecr_repo_url=${ECR_URI}" -var="image_tag=${IMAGE_TAG}" aws_iam_role.task_exec_role ecsTaskExecutionRole-flask-ml || true
+                terraform import -var="ecr_repo_url=${ECR_URI}" -var="image_tag=${IMAGE_TAG}" aws_cloudwatch_log_group.ecs /ecs/flask-ml || true
+                terraform import -var="ecr_repo_url=${ECR_URI}" -var="image_tag=${IMAGE_TAG}" aws_ecs_cluster.this flask-ml-cluster || true
+                terraform import -var="ecr_repo_url=${ECR_URI}" -var="image_tag=${IMAGE_TAG}" aws_ecs_service.service flask-ml-cluster/flask-ml-service || true
 
-                terraform import \
-                    -var="ecr_repo_url=${ECR_URI}" \
-                    -var="image_tag=${IMAGE_TAG}" \
-                    aws_ecr_repository.this ${ECR_REPO} || true
-
-                terraform import \
-                    -var="ecr_repo_url=${ECR_URI}" \
-                    -var="image_tag=${IMAGE_TAG}" \
-                    aws_iam_role.task_exec_role ecsTaskExecutionRole-flask-ml || true
-
-                terraform import \
-                    -var="ecr_repo_url=${ECR_URI}" \
-                    -var="image_tag=${IMAGE_TAG}" \
-                    aws_cloudwatch_log_group.ecs /ecs/flask-ml || true
-
-                terraform import \
-                    -var="ecr_repo_url=${ECR_URI}" \
-                    -var="image_tag=${IMAGE_TAG}" \
-                    aws_ecs_cluster.this flask-ml-cluster || true
-
-                terraform import \
-                    -var="ecr_repo_url=${ECR_URI}" \
-                    -var="image_tag=${IMAGE_TAG}" \
-                    aws_ecs_service.service flask-ml-service || true
 
                 echo "🌍 Applying Terraform configuration..."
                 terraform apply -auto-approve \
