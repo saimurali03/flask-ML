@@ -1,13 +1,7 @@
 #########################################
-# ✅ Provider Configuration
+# 🟩 Default VPC + Subnets + SG
 #########################################
-provider "aws" {
-  region = var.aws_region
-}
 
-#########################################
-# ✅ Default VPC and Subnets
-#########################################
 data "aws_vpc" "default" {
   default = true
 }
@@ -27,11 +21,14 @@ data "aws_security_groups" "default" {
 }
 
 #########################################
-# ✅ ECR Repository (ignore if exists)
+# 🟩 ECR Repository (skip if exists)
 #########################################
+
 resource "aws_ecr_repository" "this" {
   name = try(
-    regex("^.*/(.*)$", var.ecr_repo_url)[0] != "" ? element(split("/", var.ecr_repo_url), 1) : "flask-ml-api",
+    regex("^.*/(.*)$", var.ecr_repo_url)[0] != "" ?
+    element(split("/", var.ecr_repo_url), 1) :
+    "flask-ml-api",
     "flask-ml-api"
   )
 
@@ -49,18 +46,21 @@ resource "aws_ecr_repository" "this" {
 }
 
 #########################################
-# ✅ ECS Cluster
+# 🟩 ECS Cluster
 #########################################
+
 resource "aws_ecs_cluster" "this" {
   name = "flask-ml-cluster"
 }
 
 #########################################
-# ✅ IAM Role for ECS Tasks
+# 🟩 IAM Role for ECS Tasks
 #########################################
+
 data "aws_iam_policy_document" "task_assume_role" {
   statement {
     actions = ["sts:AssumeRole"]
+
     principals {
       type        = "Service"
       identifiers = ["ecs-tasks.amazonaws.com"]
@@ -71,6 +71,10 @@ data "aws_iam_policy_document" "task_assume_role" {
 resource "aws_iam_role" "task_exec_role" {
   name               = "ecsTaskExecutionRole-flask-ml"
   assume_role_policy = data.aws_iam_policy_document.task_assume_role.json
+
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "task_exec_attach" {
@@ -79,16 +83,23 @@ resource "aws_iam_role_policy_attachment" "task_exec_attach" {
 }
 
 #########################################
-# ✅ CloudWatch Logs
+# 🟩 CloudWatch Logs
 #########################################
+
 resource "aws_cloudwatch_log_group" "ecs" {
   name              = "/ecs/flask-ml"
   retention_in_days = 14
+
+  lifecycle {
+    prevent_destroy = false
+    ignore_changes  = [name]
+  }
 }
 
 #########################################
-# ✅ ECS Task Definition
+# 🟩 ECS Task Definition
 #########################################
+
 resource "aws_ecs_task_definition" "task" {
   family                   = "flask-ml-task"
   network_mode             = "awsvpc"
@@ -101,11 +112,13 @@ resource "aws_ecs_task_definition" "task" {
     name      = "flask-ml-api"
     image     = "${var.ecr_repo_url}:${var.image_tag}"
     essential = true
+
     portMappings = [{
       containerPort = 5000
       hostPort      = 5000
       protocol      = "tcp"
     }]
+
     logConfiguration = {
       logDriver = "awslogs"
       options = {
@@ -118,8 +131,9 @@ resource "aws_ecs_task_definition" "task" {
 }
 
 #########################################
-# ✅ ECS Service (uses default VPC)
+# 🟩 ECS Service
 #########################################
+
 resource "aws_ecs_service" "service" {
   name            = "flask-ml-service"
   cluster         = aws_ecs_cluster.this.id
