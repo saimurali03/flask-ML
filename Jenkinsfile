@@ -72,6 +72,11 @@ pipeline {
               echo "🧩 Initializing Terraform..."
               terraform init -reconfigure
 
+              echo "📦 Importing existing AWS resources..."
+              terraform import aws_ecr_repository.this flask-ml-api || true
+              terraform import aws_iam_role.task_exec_role ecsTaskExecutionRole-flask-ml || true
+              terraform import aws_cloudwatch_log_group.ecs /ecs/flask-ml || true
+
               echo "📦 Reading ECR URI..."
               ECR_URI=$(cat ../ecr_uri.txt)
               echo "Using ECR_URI=${ECR_URI}"
