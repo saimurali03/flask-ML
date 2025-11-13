@@ -64,36 +64,59 @@ pipeline {
       }
     }
 
-    stage('Terraform Deploy') {
-      steps {
-        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
-          dir('terraform') {
-            sh '''
-              echo "🧩 Initializing Terraform..."
-              terraform init -reconfigure
+        stage('Terraform Deploy') {
+        steps {
+            withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
+            dir('terraform') {
+                sh '''
+                echo "🧩 Initializing Terraform..."
+                terraform init -reconfigure
 
-              echo "📦 Reading ECR URI..."
-              ECR_URI=$(cat ../ecr_uri.txt)
-              echo "Using ECR_URI=${ECR_URI}"
+                echo "📦 Reading ECR URI..."
+                ECR_URI=$(cat ../ecr_uri.txt)
+                echo "Using ECR_URI=${ECR_URI}"
 
-              export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-              export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-              export AWS_DEFAULT_REGION=${AWS_REGION}
+                export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+                export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+                export AWS_DEFAULT_REGION=${AWS_REGION}
 
-              echo "📦 Importing existing AWS resources..."
-              terraform import -var="ecr_repo_url=${ECR_URI}" -var="image_tag=${IMAGE_TAG}" aws_ecr_repository.this ${ECR_REPO} || true
-              terraform import -var="ecr_repo_url=${ECR_URI}" -var="image_tag=${IMAGE_TAG}" aws_iam_role.task_exec_role ecsTaskExecutionRole-flask-ml || true
-              terraform import -var="ecr_repo_url=${ECR_URI}" -var="image_tag=${IMAGE_TAG}" aws_cloudwatch_log_group.ecs /ecs/flask-ml || true
+                echo "📦 Importing existing AWS resources..."
 
-              echo "🌍 Applying Terraform configuration..."
-              terraform apply -auto-approve \
-                -var "ecr_repo_url=${ECR_URI}" \
-                -var "image_tag=${IMAGE_TAG}"
-            '''
-          }
+                terraform import \
+                    -var="ecr_repo_url=${ECR_URI}" \
+                    -var="image_tag=${IMAGE_TAG}" \
+                    aws_ecr_repository.this ${ECR_REPO} || true
+
+                terraform import \
+                    -var="ecr_repo_url=${ECR_URI}" \
+                    -var="image_tag=${IMAGE_TAG}" \
+                    aws_iam_role.task_exec_role ecsTaskExecutionRole-flask-ml || true
+
+                terraform import \
+                    -var="ecr_repo_url=${ECR_URI}" \
+                    -var="image_tag=${IMAGE_TAG}" \
+                    aws_cloudwatch_log_group.ecs /ecs/flask-ml || true
+
+                terraform import \
+                    -var="ecr_repo_url=${ECR_URI}" \
+                    -var="image_tag=${IMAGE_TAG}" \
+                    aws_ecs_cluster.this flask-ml-cluster || true
+
+                terraform import \
+                    -var="ecr_repo_url=${ECR_URI}" \
+                    -var="image_tag=${IMAGE_TAG}" \
+                    aws_ecs_service.service flask-ml-service || true
+
+                echo "🌍 Applying Terraform configuration..."
+                terraform apply -auto-approve \
+                    -var="ecr_repo_url=${ECR_URI}" \
+                    -var="image_tag=${IMAGE_TAG}"
+                '''
+            }
+            }
         }
-      }
     }
+
   }
 
   post {
