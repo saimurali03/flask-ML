@@ -5,11 +5,9 @@ variable "aws_region" {
 
 variable "ecr_repo_url" {
   type    = string
-  description = "ECR repo URL passed from Jenkins"
 }
 
 variable "image_tag" {
   type    = string
-  description = "Docker image tag"
   default = "latest"
 }
