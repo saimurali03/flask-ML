@@ -2,9 +2,9 @@ pipeline {
   agent any
 
   environment {
-    AWS_REGION     = 'ap-south-1'
-    ECR_REPO       = 'flask-ml-api'
-    IMAGE_TAG      = "${env.BUILD_NUMBER}"
+    AWS_REGION = 'ap-south-1'
+    ECR_REPO   = 'flask-ml-api'
+    IMAGE_TAG  = "${env.BUILD_NUMBER}"
   }
 
   stages {
@@ -72,11 +72,6 @@ pipeline {
               echo "🧩 Initializing Terraform..."
               terraform init -reconfigure
 
-              echo "📦 Importing existing AWS resources..."
-              terraform import aws_ecr_repository.this flask-ml-api || true
-              terraform import aws_iam_role.task_exec_role ecsTaskExecutionRole-flask-ml || true
-              terraform import aws_cloudwatch_log_group.ecs /ecs/flask-ml || true
-
               echo "📦 Reading ECR URI..."
               ECR_URI=$(cat ../ecr_uri.txt)
               echo "Using ECR_URI=${ECR_URI}"
@@ -84,6 +79,11 @@ pipeline {
               export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
               export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
               export AWS_DEFAULT_REGION=${AWS_REGION}
+
+              echo "📦 Importing existing AWS resources..."
+              terraform import -var="ecr_repo_url=${ECR_URI}" -var="image_tag=${IMAGE_TAG}" aws_ecr_repository.this ${ECR_REPO} || true
+              terraform import -var="ecr_repo_url=${ECR_URI}" -var="image_tag=${IMAGE_TAG}" aws_iam_role.task_exec_role ecsTaskExecutionRole-flask-ml || true
+              terraform import -var="ecr_repo_url=${ECR_URI}" -var="image_tag=${IMAGE_TAG}" aws_cloudwatch_log_group.ecs /ecs/flask-ml || true
 
               echo "🌍 Applying Terraform configuration..."
               terraform apply -auto-approve \
