@@ -27,7 +27,7 @@ data "aws_security_groups" "default" {
 }
 
 #########################################
-# ECR Repository (IGNORE if already exists)
+# ECR Repository
 #########################################
 resource "aws_ecr_repository" "this" {
   name = "flask-ml-api"
@@ -47,7 +47,7 @@ resource "aws_ecr_repository" "this" {
 }
 
 #########################################
-# IAM Role for ECS Tasks (IGNORE IF EXISTS)
+# IAM Role for ECS Tasks
 #########################################
 data "aws_iam_policy_document" "task_assume_role" {
   statement {
@@ -65,9 +65,7 @@ resource "aws_iam_role" "task_exec_role" {
 
   lifecycle {
     prevent_destroy = true
-    ignore_changes = [
-      assume_role_policy
-    ]
+    ignore_changes = [assume_role_policy]
   }
 }
 
@@ -81,7 +79,7 @@ resource "aws_iam_role_policy_attachment" "task_exec_attach" {
 }
 
 #########################################
-# CloudWatch Logs (IGNORE IF EXISTS)
+# CloudWatch Logs
 #########################################
 resource "aws_cloudwatch_log_group" "ecs" {
   name              = "/ecs/flask-ml"
@@ -132,7 +130,41 @@ resource "aws_ecs_task_definition" "task" {
 }
 
 #########################################
-# ECS Service
+# Application Load Balancer
+#########################################
+resource "aws_lb" "alb" {
+  name               = "flask-ml-alb"
+  load_balancer_type = "application"
+  subnets            = data.aws_subnets.default.ids
+  security_groups    = [element(data.aws_security_groups.default.ids, 0)]
+}
+
+resource "aws_lb_target_group" "tg" {
+  name     = "flask-ml-tg"
+  port     = 5000
+  protocol = "HTTP"
+  target_type = "ip"
+  vpc_id   = data.aws_vpc.default.id
+
+  health_check {
+    path = "/"
+    port = "5000"
+  }
+}
+
+resource "aws_lb_listener" "listener" {
+  load_balancer_arn = aws_lb.alb.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.tg.arn
+  }
+}
+
+#########################################
+# ECS Service WITH ALB ATTACHED
 #########################################
 resource "aws_ecs_service" "service" {
   name            = "flask-ml-service"
@@ -147,7 +179,14 @@ resource "aws_ecs_service" "service" {
     security_groups  = [element(data.aws_security_groups.default.ids, 0)]
   }
 
+  load_balancer {
+    target_group_arn = aws_lb_target_group.tg.arn
+    container_name   = "flask-ml-api"
+    container_port   = 5000
+  }
+
   depends_on = [
+    aws_lb_listener.listener,
     aws_iam_role_policy_attachment.task_exec_attach,
     aws_ecs_task_definition.task
   ]
